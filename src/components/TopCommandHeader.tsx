@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   BookOpenCheck,
   CalendarCheck,
+  ChevronRight,
   Database,
   Grid3x3,
   RotateCcw,
@@ -38,17 +39,26 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
   const track = STUDY_TRACKS[selectedTrack];
 
   return (
-    <header className="site-header surface-glass">
+    <header className="site-header">
       <div className="site-header-inner">
         <div className="header-primary">
-          <div className="brand-lockup">
-            <div className="brand-mark" aria-hidden="true">
-              <BookOpenCheck size={20} strokeWidth={2} />
+          <div className="header-brand-column">
+            <div className="brand-lockup">
+              <div className="brand-mark" aria-hidden="true">
+                <BookOpenCheck size={24} strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <p className="brand-overline">Personal study system</p>
+                <h1 className="brand-title">180-Day Study Tracker</h1>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="brand-overline">Study index / 180 days</p>
-              <h1 className="brand-title">CGL &amp; Data Analysis</h1>
-            </div>
+            <nav className="header-breadcrumb" aria-label="Breadcrumb">
+              <span>⌂ Home</span>
+              <ChevronRight size={12} />
+              <span>Study tracker</span>
+              <ChevronRight size={12} />
+              <strong>{track.label}</strong>
+            </nav>
           </div>
 
           <div className="header-actions">
@@ -58,7 +68,7 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
               className="target-action"
               title={`Jump to the next incomplete ${track.label} day`}
             >
-              <CalendarCheck size={15} />
+              <CalendarCheck size={16} />
               <span>
                 <span className="target-action-label">Next up · {track.dailyHours}h/day</span>
                 <span className="target-action-value">Day {String(telemetry.currentTargetDay).padStart(3, '0')}</span>
@@ -72,8 +82,9 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
               className="utility-action"
               aria-pressed={showHeatmap}
               title="Toggle the 180-day consistency matrix"
+              aria-label="Toggle consistency matrix"
             >
-              <Grid3x3 size={14} />
+              <Grid3x3 size={15} />
               <span className="hidden sm:inline">Matrix</span>
             </button>
 
@@ -82,8 +93,9 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
               onClick={onOpenCurriculum}
               className="utility-action"
               title="Open the full syllabus"
+              aria-label="Open syllabus"
             >
-              <BookOpenCheck size={14} />
+              <BookOpenCheck size={15} />
               <span className="hidden md:inline">Syllabus</span>
             </button>
 
@@ -92,19 +104,20 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
               onClick={onOpenBackup}
               className="utility-action"
               title="Export or restore progress"
+              aria-label="Backup progress"
             >
-              <Database size={14} />
+              <Database size={15} />
               <span className="hidden md:inline">Backup</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenResetConfirm}
-              className="utility-action"
+              className="utility-action utility-action-reset"
               title="Reset all progress"
               aria-label="Reset all progress"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={15} />
             </button>
           </div>
         </div>

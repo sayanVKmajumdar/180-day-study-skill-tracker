@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Compass,
   FilterX,
   PartyPopper,
   Sigma,
@@ -31,7 +30,9 @@ import {
 } from './utils/storage';
 import { TopCommandHeader } from './components/TopCommandHeader';
 import { OverviewHero } from './components/OverviewHero';
+import { StudyGoalsPanel } from './components/StudyGoalsPanel';
 import { StudyTrackSwitcher } from './components/StudyTrackSwitcher';
+import { WeeklyRhythm } from './components/WeeklyRhythm';
 import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
 import { ActiveDaySpotlight } from './components/ActiveDaySpotlight';
 import { FilterToolbar, StatusFilter, ViewMode } from './components/FilterToolbar';
@@ -98,7 +99,7 @@ export function App() {
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showDeck, setShowDeck] = useState(true);
 
@@ -394,6 +395,10 @@ export function App() {
         : PHASE_BLOCKS.find((p) => p.id === selectedPhase) ?? null,
     [selectedPhase]
   );
+  const goalPhase =
+    activePhase ??
+    PHASE_BLOCKS.find((phase) => phase.id === Math.ceil(telemetry.currentTargetDay / 30)) ??
+    PHASE_BLOCKS[0];
 
   const renderDay = (d: (typeof days)[number]) =>
     viewMode === 'grid' ? (
@@ -441,7 +446,7 @@ export function App() {
         onOpenResetConfirm={() => setIsResetOpen(true)}
       />
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="app-main mx-auto w-full max-w-[1160px] flex-1 space-y-5 px-4 py-6 sm:px-6">
         <StudyTrackSwitcher
           selectedTrack={selectedTrack}
           onSelectTrack={handleSelectTrack}
@@ -454,7 +459,6 @@ export function App() {
           telemetry={telemetry}
           startDate={startDate}
           onChangeStartDate={setStartDate}
-          onJumpToTarget={() => handleJumpToDay(telemetry.currentTargetDay)}
         />
 
         {showHeatmap && (
@@ -469,260 +473,195 @@ export function App() {
           />
         )}
 
-        {/* Mission deck */}
-        <section className="space-y-2">
-          <div className="mission-section-heading">
-            <div className="mission-heading-copy">
-              <p className="section-kicker">In focus / daily session</p>
-              <h2 className="mission-section-title">
-                {STUDY_TRACKS[selectedTrack].label} · Day {focusedDayItem.day} of {TOTAL_DAYS}
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowDeck((s) => !s)}
-              className="mission-collapse-btn"
-            >
-              {showDeck ? 'Minimise' : 'Expand'}
-              {showDeck ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
-          </div>
-
-          {showDeck && (
-            <ActiveDaySpotlight
-              studyTrack={selectedTrack}
-              dayItem={focusedDayItem}
-              isCurrentTarget={focusedDayItem.day === telemetry.currentTargetDay}
-              startDate={startDate}
-              note={scopedNotes[focusedDayItem.day] || ''}
-              isBookmarked={Boolean(bookmarks[focusedDayItem.day])}
-              onToggleTask={handleToggleTask}
-              onToggleAllDayTasks={handleToggleAllDayTasks}
-              onChangeNote={handleChangeNote}
-              onToggleBookmark={handleToggleBookmark}
-              onNavigateDay={(d) => setFocusedDay(Math.max(1, Math.min(TOTAL_DAYS, d)))}
-            />
-          )}
-        </section>
-
-        {/* Phase banner */}
-        {activePhase && (
-          <div className="surface flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex items-start gap-3">
-              <span className="num grad-brand flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-extrabold text-white">
-                {activePhase.code}
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-display text-sm font-extrabold text-slate-900">
-                    {activePhase.label} · {selectedTrack === 'cgl' ? activePhase.cglSubtitle : activePhase.dataAnalysisSubtitle}
-                  </h3>
-                  <span className="num rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-800">
-                    {telemetry.phaseProgress[activePhase.id]?.percent ?? 0}% complete
-                  </span>
+        <div className="dashboard-layout">
+          <div className="dashboard-main-column">
+            <section className="dashboard-section today-section" aria-label="Today's study plan">
+              <div className="section-heading">
+                <div>
+                  <p className="dashboard-kicker">Today · Focused session</p>
+                  <h2 className="section-title">
+                    {STUDY_TRACKS[selectedTrack].label} · Day {focusedDayItem.day}
+                  </h2>
                 </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-                  {selectedTrack === 'cgl' ? (
-                    <>
-                      <span className="font-bold text-blue-700">Math:</span> {activePhase.mathFocus}
-                      <span className="mx-1.5 text-slate-300">•</span>
-                      <span className="font-bold text-indigo-700">English:</span> {activePhase.englishFocus}
-                      <span className="mx-1.5 text-slate-300">•</span>
-                      <span className="font-bold text-teal-700">GK:</span> {activePhase.gkFocus}
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-bold text-sky-700">Data Analysis:</span>{' '}
-                      {activePhase.dsFocus}
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSelectedPhase('all')}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
-            >
-              <Compass className="h-3.5 w-3.5 text-blue-600" />
-              Show all 180 days
-            </button>
-          </div>
-        )}
-
-        <FilterToolbar
-          studyTrack={selectedTrack}
-          statusFilter={statusFilter}
-          onChangeStatusFilter={setStatusFilter}
-          searchQuery={searchQuery}
-          onChangeSearchQuery={setSearchQuery}
-          viewMode={viewMode}
-          onChangeViewMode={setViewMode}
-          filteredCount={isCompletedFilter ? sunkDays.length : queueDays.length}
-          totalInPhaseCount={phaseDays.length}
-          bookmarkCount={bookmarkCount}
-          notesCount={notesCount}
-          hideCompleted={hideCompleted}
-          onToggleHideCompleted={() => setHideCompleted((v) => !v)}
-          clearedInView={isCompletedFilter ? 0 : sunkDays.length}
-        />
-
-        {/* Day list */}
-        {filteredDays.length === 0 ? (
-          <div className="surface flex flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <FilterX className="h-6 w-6" />
-            </div>
-            <h3 className="mt-3 font-display text-base font-extrabold text-slate-900">
-              No days match this view
-            </h3>
-            <p className="mt-1 max-w-md text-[11.5px] text-slate-500">
-              Nothing matches the <strong>{statusFilter}</strong> filter
-              {searchQuery ? <> and search “{searchQuery}”</> : null}. Try clearing them.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('all');
-                setSearchQuery('');
-                setSelectedPhase('all');
-              }}
-              className="grad-brand mt-4 rounded-xl px-4 py-2 text-[11px] font-bold text-white transition hover:brightness-110 cursor-pointer"
-            >
-              Reset all filters
-            </button>
-          </div>
-        ) : queueEmpty ? (
-          /* Queue clear — every visible day is done, next target lives elsewhere */
-          <div className="surface flex flex-col items-center justify-center border-emerald-200 bg-emerald-50/60 px-6 py-14 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
-              <PartyPopper className="h-6 w-6" />
-            </div>
-            <h3 className="mt-3 font-display text-base font-extrabold text-slate-900">
-              Queue clear — every day in this view is done
-            </h3>
-            <p className="mt-1 max-w-md text-[11.5px] text-slate-500">
-              All {sunkDays.length} day{sunkDays.length === 1 ? '' : 's'} here are cleared for{' '}
-              {STUDY_TRACKS[selectedTrack].label}. Your next target is{' '}
-              <strong className="num text-slate-800">Day {telemetry.currentTargetDay}</strong>.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleJumpToDay(telemetry.currentTargetDay)}
-                className="grad-brand rounded-xl px-4 py-2 text-[11px] font-bold text-white transition hover:brightness-110 cursor-pointer"
-              >
-                Go to Day {telemetry.currentTargetDay}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowClearedSection((v) => !v)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
-              >
-                {showClearedSection ? 'Hide' : 'Review'} cleared days ({sunkDays.length})
-              </button>
-            </div>
-
-            {showClearedSection && (
-              <div
-                className={
-                  viewMode === 'grid'
-                    ? 'mt-6 grid w-full grid-cols-1 gap-4 text-left md:grid-cols-2 xl:grid-cols-3'
-                    : 'mt-6 w-full space-y-2 text-left'
-                }
-              >
-                {sunkDays.map(renderDay)}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {/* Up-next queue — next day on top */}
-            <section
-              aria-label="Up-next study queue"
-              className={
-                viewMode === 'grid'
-                  ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
-                  : 'space-y-2'
-              }
-            >
-              {(isCompletedFilter ? sunkDays : queueDays).map(renderDay)}
-            </section>
-
-            {/* Cleared days — removed from the top */}
-            {!isCompletedFilter && sunkDays.length > 0 && hideCompleted && (
-              <section aria-label="Cleared days" className="surface overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setShowClearedSection((v) => !v)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-slate-50/70 cursor-pointer"
+                  onClick={() => setShowDeck((visible) => !visible)}
+                  className="section-action"
+                  aria-expanded={showDeck}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </span>
-                    <div>
-                      <h3 className="font-display text-[12px] font-extrabold text-slate-800">
-                        Cleared days ({sunkDays.length}) — removed from the top
-                      </h3>
-                      <p className="text-[10.5px] font-medium text-slate-500">
-                        Finished days drop out of the queue automatically. Expand to review or undo them.
-                      </p>
-                    </div>
-                  </div>
-                  {showClearedSection ? (
-                    <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
-                  )}
+                  {showDeck ? 'Minimise' : 'Expand'}
+                  {showDeck ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                 </button>
+              </div>
 
-                {showClearedSection && (
-                  <div className="border-t border-slate-200/80 bg-slate-50/50 p-4">
-                    <div
-                      className={
-                        viewMode === 'grid'
-                          ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
-                          : 'space-y-2'
-                      }
-                    >
-                      {sunkDays.map(renderDay)}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
+              {showDeck && (
+                <ActiveDaySpotlight
+                  studyTrack={selectedTrack}
+                  dayItem={focusedDayItem}
+                  isCurrentTarget={focusedDayItem.day === telemetry.currentTargetDay}
+                  startDate={startDate}
+                  note={scopedNotes[focusedDayItem.day] || ''}
+                  isBookmarked={Boolean(scopedBookmarks[focusedDayItem.day])}
+                  onToggleTask={handleToggleTask}
+                  onToggleAllDayTasks={handleToggleAllDayTasks}
+                  onChangeNote={handleChangeNote}
+                  onToggleBookmark={handleToggleBookmark}
+                  onNavigateDay={(dayNumber) => setFocusedDay(Math.max(1, Math.min(TOTAL_DAYS, dayNumber)))}
+                />
+              )}
+            </section>
+          </div>
 
-            {/* Inline sunk mode — cleared days visible but pinned to the bottom */}
-            {!isCompletedFilter && sunkDays.length > 0 && !hideCompleted && (
-              <section aria-label="Cleared days at the bottom" className="space-y-3">
-                <div className="flex items-center gap-3 px-1">
-                  <div className="h-px flex-1 bg-slate-200" />
-                  <span className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Cleared — sunk to the bottom ({sunkDays.length})
-                  </span>
-                  <div className="h-px flex-1 bg-slate-200" />
-                </div>
-                <div
-                  className={
-                    viewMode === 'grid'
-                      ? 'grid grid-cols-1 gap-4 opacity-90 md:grid-cols-2 xl:grid-cols-3'
-                      : 'space-y-2 opacity-90'
-                  }
+          <aside className="dashboard-sidebar" aria-label="Progress and habits">
+            <StudyGoalsPanel
+              studyTrack={selectedTrack}
+              telemetry={telemetry}
+              phase={goalPhase}
+              onViewAll={() => setSelectedPhase('all')}
+            />
+            <WeeklyRhythm
+              days={scopedDays}
+              currentTargetDay={telemetry.currentTargetDay}
+              focusedDay={focusedDay}
+              startDate={startDate}
+              telemetry={telemetry}
+              onSelectDay={handleJumpToDay}
+            />
+          </aside>
+        </div>
+
+        <section className="dashboard-section queue-section" aria-label="Study queue">
+          <div className="section-heading">
+            <div>
+              <p className="dashboard-kicker">180-day roadmap · {STUDY_TRACKS[selectedTrack].label}</p>
+              <h2 className="section-title">Top Tasks</h2>
+            </div>
+            <span className="queue-count">
+              <strong className="num">{isCompletedFilter ? sunkDays.length : queueDays.length}</strong>
+              <span>days in view</span>
+            </span>
+          </div>
+
+          <FilterToolbar
+            studyTrack={selectedTrack}
+            statusFilter={statusFilter}
+            onChangeStatusFilter={setStatusFilter}
+            searchQuery={searchQuery}
+            onChangeSearchQuery={setSearchQuery}
+            viewMode={viewMode}
+            onChangeViewMode={setViewMode}
+            filteredCount={isCompletedFilter ? sunkDays.length : queueDays.length}
+            totalInPhaseCount={phaseDays.length}
+            bookmarkCount={bookmarkCount}
+            notesCount={notesCount}
+            hideCompleted={hideCompleted}
+            onToggleHideCompleted={() => setHideCompleted((value) => !value)}
+            clearedInView={isCompletedFilter ? 0 : sunkDays.length}
+          />
+
+          {filteredDays.length === 0 ? (
+            <div className="dashboard-card empty-state">
+              <div className="empty-state-icon"><FilterX size={22} /></div>
+              <h3>No days match this view</h3>
+              <p>
+                Nothing matches the <strong>{statusFilter}</strong> filter
+                {searchQuery ? <> and search “{searchQuery}”</> : null}. Try clearing them.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setSearchQuery('');
+                  setSelectedPhase('all');
+                }}
+                className="grad-brand empty-state-button"
+              >
+                Reset all filters
+              </button>
+            </div>
+          ) : queueEmpty ? (
+            <div className="dashboard-card empty-state queue-clear">
+              <div className="empty-state-icon"><PartyPopper size={22} /></div>
+              <h3>Queue clear — every day in this view is done</h3>
+              <p>
+                All {sunkDays.length} day{sunkDays.length === 1 ? '' : 's'} here are cleared for{' '}
+                {STUDY_TRACKS[selectedTrack].label}. Your next target is{' '}
+                <strong className="num">Day {telemetry.currentTargetDay}</strong>.
+              </p>
+              <div className="empty-state-actions">
+                <button
+                  type="button"
+                  onClick={() => handleJumpToDay(telemetry.currentTargetDay)}
+                  className="grad-brand empty-state-button"
                 >
+                  Go to Day {telemetry.currentTargetDay}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowClearedSection((visible) => !visible)}
+                  className="section-action"
+                >
+                  {showClearedSection ? 'Hide' : 'Review'} cleared days ({sunkDays.length})
+                </button>
+              </div>
+
+              {showClearedSection && (
+                <div className={viewMode === 'grid' ? 'day-grid cleared-review' : 'day-list cleared-review'}>
                   {sunkDays.map(renderDay)}
                 </div>
+              )}
+            </div>
+          ) : (
+            <div className="queue-results">
+              <section
+                aria-label="Up-next study queue"
+                className={viewMode === 'grid' ? 'day-grid' : 'day-list'}
+              >
+                {(isCompletedFilter ? sunkDays : queueDays).map(renderDay)}
               </section>
-            )}
-          </div>
-        )}
+
+              {!isCompletedFilter && sunkDays.length > 0 && hideCompleted && (
+                <section aria-label="Cleared days" className="cleared-days-panel">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearedSection((visible) => !visible)}
+                    className="cleared-days-toggle"
+                  >
+                    <span className="cleared-icon"><CheckCircle2 size={16} /></span>
+                    <span className="cleared-copy">
+                      <strong>Cleared days ({sunkDays.length})</strong>
+                      <small>Finished days drop out of the queue. Expand to review or undo.</small>
+                    </span>
+                    {showClearedSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                  {showClearedSection && (
+                    <div className={viewMode === 'grid' ? 'day-grid cleared-review' : 'day-list cleared-review'}>
+                      {sunkDays.map(renderDay)}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {!isCompletedFilter && sunkDays.length > 0 && !hideCompleted && (
+                <section aria-label="Cleared days at the bottom" className="cleared-inline">
+                  <div className="cleared-inline-title">
+                    <span />
+                    <strong><CheckCircle2 size={14} /> Cleared · bottom of queue ({sunkDays.length})</strong>
+                    <span />
+                  </div>
+                  <div className={viewMode === 'grid' ? 'day-grid' : 'day-list'}>
+                    {sunkDays.map(renderDay)}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+        </section>
       </main>
 
       {/* Footer */}
       <footer className="app-footer">
-        <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-2.5 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1160px] flex-col items-center justify-between gap-2.5 px-4 py-5 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
             <div className="grad-brand flex h-7 w-7 items-center justify-center rounded-lg text-white">
               <Sigma className="h-3.5 w-3.5" strokeWidth={2.5} />
