@@ -149,8 +149,8 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
       <div
         className={`relative px-5 py-4 sm:px-6 ${
           allCompleted
-            ? 'bg-gradient-to-r from-emerald-600 to-teal-600'
-            : 'bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900'
+            ? 'bg-emerald-700'
+            : 'bg-slate-900'
         }`}
       >
         <div className="pointer-events-none absolute inset-0 shimmer opacity-25" />

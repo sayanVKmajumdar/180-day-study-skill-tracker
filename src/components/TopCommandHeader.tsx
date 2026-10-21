@@ -44,7 +44,7 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
         {/* Row 1 — Brand + utilities */}
         <div className="flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="flex items-center gap-3">
-            <div className="grad-brand flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-blue-600/20">
+            <div className="grad-brand flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white">
               <Sigma className="h-5 w-5" strokeWidth={2.4} />
             </div>
             <div className="min-w-0">
@@ -73,7 +73,7 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
             <button
               type="button"
               onClick={() => onJumpToDay(telemetry.currentTargetDay)}
-              className="grad-brand num inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold text-white shadow-md shadow-blue-600/20 transition hover:brightness-110 active:scale-[0.98] cursor-pointer"
+              className="grad-brand num inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold text-white transition hover:brightness-110 active:scale-[0.98] cursor-pointer"
               title={`Jump to the next incomplete ${STUDY_TRACKS[selectedTrack].label} day`}
             >
               <CalendarCheck className="h-3.5 w-3.5" />

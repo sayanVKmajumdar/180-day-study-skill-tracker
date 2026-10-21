@@ -596,7 +596,7 @@ export function App() {
           </div>
         ) : queueEmpty ? (
           /* Queue clear — every visible day is done, next target lives elsewhere */
-          <div className="surface flex flex-col items-center justify-center border-emerald-200 bg-gradient-to-b from-emerald-50/60 to-white px-6 py-14 text-center">
+          <div className="surface flex flex-col items-center justify-center border-emerald-200 bg-emerald-50/60 px-6 py-14 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
               <PartyPopper className="h-6 w-6" />
             </div>
