@@ -10,6 +10,33 @@ export interface DayTrackerItem {
 }
 
 export type SubjectKey = 'math' | 'english' | 'gkNew' | 'gkRev' | 'dataScience';
+export type StudyTrack = 'cgl' | 'dataAnalysis';
+
+export const STUDY_TRACKS: Record<
+  StudyTrack,
+  {
+    label: string;
+    description: string;
+    dailyHours: number;
+    dailyTasks: number;
+    subjectKeys: SubjectKey[];
+  }
+> = {
+  cgl: {
+    label: 'CGL Study',
+    description: 'Math · English · General Awareness',
+    dailyHours: 3.5,
+    dailyTasks: 4,
+    subjectKeys: ['math', 'english', 'gkNew', 'gkRev'],
+  },
+  dataAnalysis: {
+    label: 'Data Analysis Study',
+    description: 'Python · SQL · Analytics · Portfolio',
+    dailyHours: 2,
+    dailyTasks: 1,
+    subjectKeys: ['dataScience'],
+  },
+};
 
 export interface ParsedTaskMeta {
   id: string;
@@ -34,6 +61,8 @@ export interface PhaseBlock {
   gkFocus: string;
   englishFocus: string;
   dsFocus: string;
+  cglSubtitle: string;
+  dataAnalysisSubtitle: string;
 }
 
 /* ------------------------------------------------------------------ *
@@ -263,7 +292,7 @@ const buildGkRevTopic = (day: number): string => {
   return 'Full GK Mega Revision — Rotating All 7 Subjects';
 };
 
-/** DATA SCIENCE — 2h/day, 15 granular skill blocks. */
+/** DATA ANALYSIS — 2h/day, 15 granular skill blocks. */
 export const DS_ROADMAP = [
   { range: 'Days 1–12', startDay: 1, endDay: 12, skill: 'Python Core', detail: 'Lists, Dicts, Sets, Comprehensions, Functions, Decorators' },
   { range: 'Days 13–22', startDay: 13, endDay: 22, skill: 'NumPy', detail: 'Arrays, Broadcasting, Vectorization, Linear Algebra' },
@@ -320,7 +349,7 @@ export const generate180DaysTracker = (): DayTrackerItem[] => {
         { id: `d${day}_t2`, title: `English (1h): ${english}`, completed: false },
         { id: `d${day}_t3`, title: `GK New (1h): ${gkNew}`, completed: false },
         { id: `d${day}_t4`, title: `GK Rev (30m): ${gkRev}`, completed: false },
-        { id: `d${day}_t5`, title: `Data Science (2h): ${dataScience}`, completed: false },
+        { id: `d${day}_t5`, title: `Data Analysis (2h): ${dataScience}`, completed: false },
       ],
     });
   }
@@ -374,7 +403,7 @@ export const parseTaskMeta = (task: TrackerTask): ParsedTaskMeta => {
     English: 'english',
     'GK New': 'gkNew',
     'GK Rev': 'gkRev',
-    'Data Science': 'dataScience',
+    'Data Analysis': 'dataScience',
   };
 
   return {
@@ -389,6 +418,26 @@ export const parseTaskMeta = (task: TrackerTask): ParsedTaskMeta => {
     isMockBlock: /Mock|PYQ Marathon|Revision Test/i.test(topic),
   };
 };
+
+export const isTaskInStudyTrack = (task: TrackerTask, track: StudyTrack): boolean => {
+  const subjectKey = parseTaskMeta(task).subjectKey;
+  return track === 'dataAnalysis'
+    ? subjectKey === 'dataScience'
+    : subjectKey !== 'dataScience';
+};
+
+export const getTasksForStudyTrack = (
+  day: DayTrackerItem,
+  track: StudyTrack
+): TrackerTask[] => day.tasks.filter((task) => isTaskInStudyTrack(task, track));
+
+export const getStudyTrackDay = (
+  day: DayTrackerItem,
+  track: StudyTrack
+): DayTrackerItem => ({
+  ...day,
+  tasks: getTasksForStudyTrack(day, track),
+});
 
 /** Returns the active GK subject name for a given day. */
 export const getGkSubjectForDay = (day: number): string => {
@@ -453,8 +502,8 @@ export const SUBJECT_STYLES: Record<
     hex: '#F59E0B',
   },
   dataScience: {
-    name: 'Data Science & AlgoMath',
-    shortName: 'Data Sci',
+    name: 'Data Analytics & Portfolio',
+    shortName: 'Data Analysis',
     chip: 'bg-sky-50 border-sky-200/80',
     chipText: 'text-sky-700',
     barColor: 'bg-sky-500',
@@ -487,6 +536,8 @@ export const PHASE_BLOCKS: PhaseBlock[] = [
     gkFocus: 'Polity ⚡Rev (12d) → History Rev + Ancient/Medieval',
     englishFocus: 'Vocab Roots → Subject-Verb Agreement & Tenses',
     dsFocus: 'Python Core → NumPy → Pandas Fundamentals',
+    cglSubtitle: 'Math & CGL Foundations',
+    dataAnalysisSubtitle: 'Python & Analytics Foundations',
   },
   {
     id: 2,
@@ -499,6 +550,8 @@ export const PHASE_BLOCKS: PhaseBlock[] = [
     gkFocus: 'Static GK — Awards, Books, Sports, UN, ISRO/DRDO',
     englishFocus: 'Prepositions, Modals → Error Spotting Drills',
     dsFocus: 'Pandas Mastery → SQL Joins & Window Functions',
+    cglSubtitle: 'Static GK & Aptitude',
+    dataAnalysisSubtitle: 'Data Wrangling & SQL',
   },
   {
     id: 3,
@@ -511,6 +564,8 @@ export const PHASE_BLOCKS: PhaseBlock[] = [
     gkFocus: 'Geography — Physical, Indian, Agriculture, World Map',
     englishFocus: 'Idioms & One-Words → Reading Comprehension',
     dsFocus: 'Data Cleaning → EDA → Matplotlib/Seaborn Storytelling',
+    cglSubtitle: 'Geography & Revision',
+    dataAnalysisSubtitle: 'EDA & Visualization',
   },
   {
     id: 4,
@@ -523,6 +578,8 @@ export const PHASE_BLOCKS: PhaseBlock[] = [
     gkFocus: 'Economics — RBI, Budget, GST, BoP → Science ⚡Rev',
     englishFocus: 'RC + Cloze → Para Jumbles & Rearrangement',
     dsFocus: 'APIs/Scraping → Time Series → RSI, MACD, EMA',
+    cglSubtitle: 'Economics & Sectional Mocks',
+    dataAnalysisSubtitle: 'APIs, Time Series & Indicators',
   },
   {
     id: 5,
@@ -535,6 +592,8 @@ export const PHASE_BLOCKS: PhaseBlock[] = [
     gkFocus: 'Biology (New) + Sci-Tech + Economics Recall',
     englishFocus: 'Active/Passive, Spellings → English Sectional Mocks',
     dsFocus: 'Backtesting → Statistics → React/Recharts Dashboards',
+    cglSubtitle: 'Science, English & Mocks',
+    dataAnalysisSubtitle: 'Statistics & Dashboards',
   },
   {
     id: 6,
@@ -547,6 +606,8 @@ export const PHASE_BLOCKS: PhaseBlock[] = [
     gkFocus: 'Current Affairs (1 Year) + Full GK Mega Revision',
     englishFocus: 'English Sectional Mocks + Vocab Spaced Revision',
     dsFocus: 'AlgoMath Case Studies → 3 Capstone Projects + Deploy',
+    cglSubtitle: 'Current Affairs & Full Mocks',
+    dataAnalysisSubtitle: 'Portfolio Projects & Deployment',
   },
 ];
 
@@ -585,7 +646,7 @@ export const CURRICULUM_ROADMAP = {
     },
     {
       key: 'dataScience' as SubjectKey,
-      title: 'Data Science — 15 Skill Blocks',
+      title: 'Data Analysis — 15 Skill Blocks',
       daily: '2h / day',
       totalHours: 360,
       note: 'Python → NumPy → Pandas → SQL → EDA → Viz → APIs → Indicators → Capstone',

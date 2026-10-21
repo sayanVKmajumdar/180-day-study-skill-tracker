@@ -16,14 +16,15 @@ import {
 import {
   DayTrackerItem,
   getGkSubjectForDay,
-  HOURS_PER_DAY,
   parseTaskMeta,
   PHASE_BLOCKS,
   SUBJECT_STYLES,
+  StudyTrack,
 } from '../data/trackerGenerator';
 import { getProjectedDateLabel, getProjectedWeekday } from '../utils/storage';
 
 interface ActiveDaySpotlightProps {
+  studyTrack: StudyTrack;
   dayItem: DayTrackerItem;
   isCurrentTarget: boolean;
   startDate: string;
@@ -36,14 +37,21 @@ interface ActiveDaySpotlightProps {
   onNavigateDay: (newDay: number) => void;
 }
 
-const PRESETS = [
-  { minutes: 25, label: '25m Pomodoro' },
-  { minutes: 30, label: '30m GK Rev' },
-  { minutes: 60, label: '1h Math/Eng/GK' },
-  { minutes: 120, label: '2h Data Sci' },
-];
+const PRESETS = {
+  cgl: [
+    { minutes: 25, label: '25m Pomodoro' },
+    { minutes: 30, label: '30m GK Rev' },
+    { minutes: 60, label: '1h CGL block' },
+  ],
+  dataAnalysis: [
+    { minutes: 25, label: '25m Pomodoro' },
+    { minutes: 60, label: '1h focus' },
+    { minutes: 120, label: '2h Data Analysis' },
+  ],
+};
 
 export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
+  studyTrack,
   dayItem,
   isCurrentTarget,
   startDate,
@@ -58,9 +66,19 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
   const completedCount = dayItem.tasks.filter((t) => t.completed).length;
   const allCompleted = completedCount === dayItem.tasks.length;
   const phase = PHASE_BLOCKS.find((p) => p.id === Math.ceil(dayItem.day / 30)) ?? PHASE_BLOCKS[0];
+  const phaseSubtitle = studyTrack === 'cgl' ? phase.cglSubtitle : phase.dataAnalysisSubtitle;
   const dateLabel = getProjectedDateLabel(dayItem.day, startDate);
   const weekday = getProjectedWeekday(dayItem.day, startDate);
-  const gkSubject = getGkSubjectForDay(dayItem.day);
+  const hasGkFocus = dayItem.tasks.some((task) => {
+    const { subjectKey } = parseTaskMeta(task);
+    return subjectKey === 'gkNew' || subjectKey === 'gkRev';
+  });
+  const gkSubject = hasGkFocus ? getGkSubjectForDay(dayItem.day) : null;
+
+  const dailyHours = useMemo(
+    () => dayItem.tasks.reduce((sum, task) => sum + parseTaskMeta(task).durationHours, 0),
+    [dayItem]
+  );
 
   const loggedHours = useMemo(
     () =>
@@ -171,7 +189,7 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-display text-sm font-extrabold text-white sm:text-base">
-                  {phase.code} · {phase.subtitle}
+                  {phase.code} · {phaseSubtitle}
                 </h2>
                 {isCurrentTarget && !allCompleted && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[10px] font-extrabold text-blue-700">
@@ -187,8 +205,8 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
                 )}
               </div>
               <p className="num mt-0.5 text-[11px] font-medium text-white/70">
-                {weekday && dateLabel ? `${weekday}, ${dateLabel}` : 'Schedule date'} · GK
-                focus: {gkSubject}
+                {weekday && dateLabel ? `${weekday}, ${dateLabel}` : 'Schedule date'}
+                {gkSubject ? ` · GK focus: ${gkSubject}` : ' · Data Analysis daily block'}
               </p>
             </div>
           </div>
@@ -211,7 +229,7 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
 
             <div className="num flex items-center gap-2 rounded-xl bg-white/12 px-3 py-2 text-[11px] font-bold text-white ring-1 ring-inset ring-white/20">
               <span>
-                {completedCount}/5 · {loggedHours.toFixed(1)}h/{HOURS_PER_DAY}h
+                {completedCount}/{dayItem.tasks.length} · {loggedHours.toFixed(1)}h/{dailyHours.toFixed(1)}h
               </span>
             </div>
 
@@ -225,7 +243,7 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
               }`}
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              {allCompleted ? 'Undo all' : 'Complete all 5'}
+              {allCompleted ? 'Undo all' : `Complete all ${dayItem.tasks.length}`}
             </button>
           </div>
         </div>
@@ -417,7 +435,7 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  {PRESETS.map((p) => (
+                  {PRESETS[studyTrack].map((p) => (
                     <button
                       key={p.label}
                       type="button"
@@ -454,7 +472,9 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
               rows={5}
               value={note || ''}
               onChange={(e) => onChangeNote(dayItem.day, e.target.value)}
-              placeholder="Mock score, accuracy %, silly mistakes, formulas to revisit, Python/SQL snippets, Polity articles, current affairs dates…"
+              placeholder={studyTrack === 'cgl'
+                ? 'Mock score, accuracy %, mistakes, formulas to revisit, Polity articles, current affairs dates…'
+                : 'Dataset, SQL queries, cleaning decisions, insights, charts, bugs, and next steps…'}
               className="w-full flex-1 resize-none rounded-lg border border-slate-200 bg-white p-2.5 text-xs leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
             />
           </div>

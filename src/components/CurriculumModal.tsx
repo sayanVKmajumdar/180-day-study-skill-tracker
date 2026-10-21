@@ -14,29 +14,30 @@ import {
   DS_ROADMAP,
   GK_SEQUENCE,
   SUBJECT_STYLES,
+  StudyTrack,
 } from '../data/trackerGenerator';
 
 interface CurriculumModalProps {
   isOpen: boolean;
   onClose: () => void;
   days: DayTrackerItem[];
-  onJumpToDay: (day: number) => void;
+  onJumpToTrackDay: (track: StudyTrack, day: number) => void;
 }
 
 type TabId = 'overview' | 'gk' | 'ds' | 'mathEnglish';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'Overview', icon: <BookOpenCheck className="h-3.5 w-3.5" /> },
-  { id: 'gk', label: 'GK Sequence', icon: <BrainCircuit className="h-3.5 w-3.5" /> },
-  { id: 'ds', label: 'Data Science', icon: <Sigma className="h-3.5 w-3.5" /> },
-  { id: 'mathEnglish', label: 'Math + English', icon: <Languages className="h-3.5 w-3.5" /> },
+  { id: 'gk', label: 'CGL · GK', icon: <BrainCircuit className="h-3.5 w-3.5" /> },
+  { id: 'ds', label: 'Data Analysis Study', icon: <Sigma className="h-3.5 w-3.5" /> },
+  { id: 'mathEnglish', label: 'CGL · Math + English', icon: <Languages className="h-3.5 w-3.5" /> },
 ];
 
 export const CurriculumModal: React.FC<CurriculumModalProps> = ({
   isOpen,
   onClose,
   days,
-  onJumpToDay,
+  onJumpToTrackDay,
 }) => {
   const [tab, setTab] = useState<TabId>('overview');
 
@@ -58,6 +59,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     accent,
     taskIndex,
     badge,
+    studyTrack,
   }: {
     startDay: number;
     endDay: number;
@@ -66,6 +68,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
     subtitle?: string;
     accent: string;
     taskIndex: number;
+    studyTrack: StudyTrack;
     badge?: React.ReactNode;
   }) => {
     const stat = rangeStat(startDay, endDay, taskIndex);
@@ -73,7 +76,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
       <button
         type="button"
         onClick={() => {
-          onJumpToDay(startDay);
+          onJumpToTrackDay(studyTrack, startDay);
           onClose();
         }}
         className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
@@ -119,8 +122,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                 180-Day Syllabus Blueprint
               </h2>
               <p className="mt-0.5 text-[11px] font-medium text-blue-50/90">
-                5.5h/day · 990 total hours · 900 tasks · compressed for topics you have
-                already covered
+                Two independent 180-day tracks · CGL 3.5h/day + Data Analysis 2h/day
               </p>
             </div>
             <button
@@ -158,17 +160,14 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
             <div className="space-y-3">
               <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
                 <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-blue-800">
-                  Why the load dropped from 7h to 5.5h per day
+                  Two separate study tracks
                 </h3>
                 <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-700">
-                  You have already read <strong>Polity</strong>, <strong>Modern History</strong>,{' '}
-                  <strong>Physics</strong> and <strong>Chemistry</strong>, and covered the{' '}
-                  <strong>entire Math syllabus</strong>. Those tracks are now compressed into
-                  rapid-revision and timed-mock blocks instead of fresh learning, so{' '}
-                  <strong className="num">Math 2h → 1h</strong>,{' '}
-                  <strong className="num">English 1.5h → 1h</strong>, and GK gets a
-                  re-sequenced 7-subject ladder. The freed hours stay with{' '}
-                  <strong>Data Science (2h)</strong>, which is fully fresh.
+                  The <strong>CGL Study</strong> plan (Math, English and General Awareness) and the{' '}
+                  <strong>Data Analysis Study</strong> plan have separate daily checklists and
+                  separate progress totals. CGL has four tasks across 3.5 hours per day;
+                  Data Analysis has one two-hour skill block per day. Switch between them
+                  without mixing their completion counts.
                 </p>
               </div>
 
@@ -211,24 +210,40 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
 
               <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                 <h3 className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                  Daily task template
+                  Separate daily templates
                 </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
-                  {[
-                    { label: 'Math', time: '1h', note: 'Sprint / Mock' },
-                    { label: 'English', time: '1h', note: 'Specified module' },
-                    { label: 'GK New', time: '1h', note: '7-subject ladder' },
-                    { label: 'GK Rev', time: '30m', note: 'Spaced repetition' },
-                    { label: 'Data Science', time: '2h', note: '15 skill blocks' },
-                  ].map((x) => (
-                    <div key={x.label} className="rounded-lg border border-slate-200 bg-white p-2.5 text-center">
-                      <div className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
-                        {x.label}
-                      </div>
-                      <div className="num mt-0.5 text-sm font-extrabold text-slate-900">{x.time}</div>
-                      <div className="text-[9.5px] font-medium text-slate-400">{x.note}</div>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-blue-800">CGL Study</span>
+                      <span className="num text-[10px] font-bold text-blue-700">3.5h/day</span>
                     </div>
-                  ))}
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { label: 'Math', time: '1h', note: 'Sprint / mock' },
+                        { label: 'English', time: '1h', note: 'Specified module' },
+                        { label: 'GK New', time: '1h', note: '7-subject ladder' },
+                        { label: 'GK Rev', time: '30m', note: 'Spaced repetition' },
+                      ].map((x) => (
+                        <div key={x.label} className="rounded-lg border border-slate-200 bg-white p-2.5 text-center">
+                          <div className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">{x.label}</div>
+                          <div className="num mt-0.5 text-sm font-extrabold text-slate-900">{x.time}</div>
+                          <div className="text-[9.5px] font-medium text-slate-400">{x.note}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-sky-200 bg-sky-50/40 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-sky-800">Data Analysis Study</span>
+                      <span className="num text-[10px] font-bold text-sky-700">2h/day</span>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white p-2.5 text-center">
+                      <div className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Daily skill block</div>
+                      <div className="num mt-0.5 text-sm font-extrabold text-slate-900">2h</div>
+                      <div className="text-[9.5px] font-medium text-slate-400">15 skill modules</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -259,7 +274,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                       key={g.subject}
                       type="button"
                       onClick={() => {
-                        onJumpToDay(g.startDay);
+                        onJumpToTrackDay('cgl', g.startDay);
                         onClose();
                       }}
                       className="rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-300 hover:bg-teal-50/30 cursor-pointer"
@@ -313,7 +328,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
             <div className="space-y-3">
               <div className="rounded-xl border border-sky-200 bg-sky-50/50 px-4 py-3">
                 <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-sky-800">
-                  Data Science — 15 granular skill blocks (2h/day · 360h)
+                  Data Analysis — 15 granular skill blocks (2h/day · 360h)
                 </h3>
                 <p className="mt-0.5 text-[11px] font-medium text-slate-600">
                   Python → NumPy → Pandas → SQL → Cleaning → EDA → Viz → APIs → Time Series →
@@ -332,6 +347,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                     subtitle={d.detail}
                     accent="text-sky-700"
                     taskIndex={4}
+                    studyTrack="dataAnalysis"
                   />
                 ))}
               </div>
@@ -357,6 +373,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                       title={m.topic}
                       accent="text-blue-700"
                       taskIndex={0}
+                      studyTrack="cgl"
                     />
                   ))}
                 </div>
@@ -379,6 +396,7 @@ export const CurriculumModal: React.FC<CurriculumModalProps> = ({
                       title={e.topic}
                       accent="text-indigo-700"
                       taskIndex={1}
+                      studyTrack="cgl"
                     />
                   ))}
                 </div>

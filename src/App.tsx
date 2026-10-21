@@ -12,7 +12,11 @@ import {
 } from 'lucide-react';
 import {
   generate180DaysTracker,
+  getStudyTrackDay,
+  isTaskInStudyTrack,
   PHASE_BLOCKS,
+  STUDY_TRACKS,
+  StudyTrack,
   TOTAL_DAYS,
 } from './data/trackerGenerator';
 import {
@@ -28,6 +32,7 @@ import {
 } from './utils/storage';
 import { TopCommandHeader } from './components/TopCommandHeader';
 import { OverviewHero } from './components/OverviewHero';
+import { StudyTrackSwitcher } from './components/StudyTrackSwitcher';
 import { ConsistencyHeatmap } from './components/ConsistencyHeatmap';
 import { ActiveDaySpotlight } from './components/ActiveDaySpotlight';
 import { FilterToolbar, StatusFilter, ViewMode } from './components/FilterToolbar';
@@ -39,6 +44,21 @@ import { BackupModal, ResetConfirmModal } from './components/BackupResetModals';
 const isDayCleared = (day: { tasks: { completed: boolean }[] }) =>
   day.tasks.length > 0 && day.tasks.every((t) => t.completed);
 
+// Keep per-day notes and bookmarks independent while preserving the old CGL day keys.
+const DATA_ANALYSIS_DAY_KEY_OFFSET = 1000;
+const getTrackDayStorageKey = (track: StudyTrack, day: number): number =>
+  track === 'dataAnalysis' ? day + DATA_ANALYSIS_DAY_KEY_OFFSET : day;
+
+const scopeDayRecords = <T,>(record: Record<number, T>, track: StudyTrack): Record<number, T> => {
+  const offset = track === 'dataAnalysis' ? DATA_ANALYSIS_DAY_KEY_OFFSET : 0;
+  const scoped: Record<number, T> = {};
+  Object.entries(record).forEach(([storedDay, value]) => {
+    const day = Number(storedDay) - offset;
+    if (Number.isInteger(day) && day >= 1 && day <= TOTAL_DAYS) scoped[day] = value;
+  });
+  return scoped;
+};
+
 export function App() {
   const initialState = useMemo(() => loadTrackerState(), []);
 
@@ -48,12 +68,34 @@ export function App() {
     initialState.bookmarks
   );
   const [startDate, setStartDate] = useState<string>(initialState.startDate);
+  const [selectedTrack, setSelectedTrack] = useState<StudyTrack>('cgl');
 
-  const telemetry = useMemo(() => computeTelemetry(days), [days]);
+  const trackDays = useMemo(
+    () => ({
+      cgl: days.map((day) => getStudyTrackDay(day, 'cgl')),
+      dataAnalysis: days.map((day) => getStudyTrackDay(day, 'dataAnalysis')),
+    }),
+    [days]
+  );
+  const telemetryByTrack = useMemo(
+    () => ({
+      cgl: computeTelemetry(trackDays.cgl),
+      dataAnalysis: computeTelemetry(trackDays.dataAnalysis),
+    }),
+    [trackDays]
+  );
+  const scopedDays = trackDays[selectedTrack];
+  const scopedNotes = useMemo(() => scopeDayRecords(notes, selectedTrack), [notes, selectedTrack]);
+  const scopedBookmarks = useMemo(
+    () => scopeDayRecords(bookmarks, selectedTrack),
+    [bookmarks, selectedTrack]
+  );
+  const telemetry = telemetryByTrack[selectedTrack];
+  const overallTelemetry = useMemo(() => computeTelemetry(days), [days]);
 
   const [selectedPhase, setSelectedPhase] = useState<number | 'all'>('all');
   const [focusedDay, setFocusedDay] = useState<number>(
-    () => computeTelemetry(initialState.days).currentTargetDay
+    () => computeTelemetry(initialState.days.map((day) => getStudyTrackDay(day, 'cgl'))).currentTargetDay
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,16 +136,17 @@ export function App() {
   const advanceDeckIfCleared = useCallback(
     (updatedDays: typeof days, clearedDayNumber: number) => {
       const clearedDay = updatedDays.find((d) => d.day === clearedDayNumber);
-      if (!clearedDay || !isDayCleared(clearedDay)) return;
+      const scopedClearedDay = clearedDay && getStudyTrackDay(clearedDay, selectedTrack);
+      if (!scopedClearedDay || !isDayCleared(scopedClearedDay)) return;
       celebrate();
       setFocusedDay((prevFocused) => {
         if (prevFocused !== clearedDayNumber) return prevFocused;
-        const next = updatedDays.find((d) => !isDayCleared(d));
+        const next = updatedDays.find((day) => !isDayCleared(getStudyTrackDay(day, selectedTrack)));
         return next ? next.day : prevFocused;
       });
       setShowDeck(true);
     },
-    [celebrate]
+    [celebrate, selectedTrack]
   );
 
   const handleToggleTask = useCallback(
@@ -129,32 +172,36 @@ export function App() {
         if (d.day !== dayNumber) return d;
         return {
           ...d,
-          tasks: d.tasks.map((t) => ({ ...t, completed: markComplete })),
+          tasks: d.tasks.map((t) =>
+            isTaskInStudyTrack(t, selectedTrack) ? { ...t, completed: markComplete } : t
+          ),
         };
       });
       setDays(updated);
       if (markComplete) advanceDeckIfCleared(updated, dayNumber);
     },
-    [days, advanceDeckIfCleared]
+    [days, selectedTrack, advanceDeckIfCleared]
   );
 
   const handleChangeNote = useCallback((dayNumber: number, text: string) => {
+    const storageDay = getTrackDayStorageKey(selectedTrack, dayNumber);
     setNotes((prev) => {
       const next = { ...prev };
-      if (!text.trim()) delete next[dayNumber];
-      else next[dayNumber] = text;
+      if (!text.trim()) delete next[storageDay];
+      else next[storageDay] = text;
       return next;
     });
-  }, []);
+  }, [selectedTrack]);
 
   const handleToggleBookmark = useCallback((dayNumber: number) => {
+    const storageDay = getTrackDayStorageKey(selectedTrack, dayNumber);
     setBookmarks((prev) => {
       const next = { ...prev };
-      if (next[dayNumber]) delete next[dayNumber];
-      else next[dayNumber] = true;
+      if (next[storageDay]) delete next[storageDay];
+      else next[storageDay] = true;
       return next;
     });
-  }, []);
+  }, [selectedTrack]);
 
   const handleJumpToDay = useCallback(
     (dayNumber: number) => {
@@ -172,7 +219,7 @@ export function App() {
 
       // If the destination day is cleared and cleared days are hidden,
       // reveal them so the card actually exists to scroll to.
-      const dest = days.find((d) => d.day === clamped);
+      const dest = scopedDays.find((d) => d.day === clamped);
       if (dest && isDayCleared(dest) && hideCompleted) {
         setShowClearedSection(true);
       }
@@ -183,7 +230,48 @@ export function App() {
         else window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 90);
     },
-    [days, hideCompleted]
+    [scopedDays, hideCompleted]
+  );
+
+  const handleSelectTrack = useCallback(
+    (track: StudyTrack) => {
+      if (track === selectedTrack) return;
+      setSelectedTrack(track);
+      setFocusedDay(telemetryByTrack[track].currentTargetDay);
+      setSelectedPhase('all');
+      setStatusFilter('all');
+      setSearchQuery('');
+      setShowHeatmap(false);
+      setShowClearedSection(false);
+      setShowDeck(true);
+    },
+    [selectedTrack, telemetryByTrack]
+  );
+
+  const handleJumpToTrackDay = useCallback(
+    (track: StudyTrack, dayNumber: number) => {
+      const clamped = Math.max(1, Math.min(TOTAL_DAYS, dayNumber));
+      setSelectedTrack(track);
+      setFocusedDay(clamped);
+      setSelectedPhase('all');
+      setStatusFilter('all');
+      setSearchQuery('');
+      setShowHeatmap(false);
+      setShowDeck(true);
+      setShowClearedSection(false);
+
+      const destination = trackDays[track].find((day) => day.day === clamped);
+      if (destination && isDayCleared(destination) && hideCompleted) {
+        setShowClearedSection(true);
+      }
+
+      window.setTimeout(() => {
+        const el = document.getElementById(`day-card-${clamped}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        else window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 90);
+    },
+    [trackDays, hideCompleted]
   );
 
   const handleFocusDay = useCallback((dayNumber: number) => {
@@ -208,10 +296,12 @@ export function App() {
       if (payload.notes) setNotes(payload.notes);
       if (payload.bookmarks) setBookmarks(payload.bookmarks);
       if (payload.startDate) setStartDate(payload.startDate);
-      const next = rehydrated.find((d) => !isDayCleared(d));
+      const next = rehydrated.find(
+        (day) => !isDayCleared(getStudyTrackDay(day, selectedTrack))
+      );
       if (next) setFocusedDay(next.day);
     },
-    []
+    [selectedTrack]
   );
 
   const handleReset = useCallback(() => {
@@ -228,10 +318,10 @@ export function App() {
 
   /* ---------------- derived data ---------------- */
   const phaseDays = useMemo(() => {
-    if (selectedPhase === 'all') return days;
+    if (selectedPhase === 'all') return scopedDays;
     const block = PHASE_BLOCKS.find((p) => p.id === selectedPhase);
-    return block ? days.slice(block.startDay - 1, block.endDay) : days;
-  }, [days, selectedPhase]);
+    return block ? scopedDays.slice(block.startDay - 1, block.endDay) : scopedDays;
+  }, [scopedDays, selectedPhase]);
 
   const filteredDays = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -245,8 +335,8 @@ export function App() {
       if (statusFilter === 'completed' && !isAllDone) return false;
       if (statusFilter === 'in-progress' && !isInProgress) return false;
       if (statusFilter === 'incomplete' && doneCount > 0) return false;
-      if (statusFilter === 'bookmarked' && !bookmarks[d.day]) return false;
-      if (statusFilter === 'with-notes' && !notes[d.day]?.trim()) return false;
+      if (statusFilter === 'bookmarked' && !scopedBookmarks[d.day]) return false;
+      if (statusFilter === 'with-notes' && !scopedNotes[d.day]?.trim()) return false;
       if (statusFilter === 'rapid-rev' && !hasRevTask) return false;
 
       if (q) {
@@ -256,13 +346,13 @@ export function App() {
           `d${d.day}`.includes(q) ||
           String(d.day).padStart(3, '0').includes(q);
         const taskMatch = d.tasks.some((t) => t.title.toLowerCase().includes(q));
-        const noteMatch = (notes[d.day] || '').toLowerCase().includes(q);
+        const noteMatch = (scopedNotes[d.day] || '').toLowerCase().includes(q);
         return dayMatch || taskMatch || noteMatch;
       }
 
       return true;
     });
-  }, [phaseDays, statusFilter, searchQuery, bookmarks, notes]);
+  }, [phaseDays, statusFilter, searchQuery, scopedBookmarks, scopedNotes]);
 
   /**
    * Queue split: active (up-next) days stay on top in chronological order with
@@ -284,18 +374,18 @@ export function App() {
   const queueEmpty = !isCompletedFilter && queueDays.length === 0 && sunkDays.length > 0;
 
   const focusedDayItem = useMemo(
-    () => days.find((d) => d.day === focusedDay) ?? days[0],
-    [days, focusedDay]
+    () => scopedDays.find((d) => d.day === focusedDay) ?? scopedDays[0],
+    [scopedDays, focusedDay]
   );
 
   const bookmarkCount = useMemo(
-    () => Object.values(bookmarks).filter(Boolean).length,
-    [bookmarks]
+    () => Object.values(scopedBookmarks).filter(Boolean).length,
+    [scopedBookmarks]
   );
 
   const notesCount = useMemo(
-    () => Object.values(notes).filter((n) => n?.trim()).length,
-    [notes]
+    () => Object.values(scopedNotes).filter((n) => n?.trim()).length,
+    [scopedNotes]
   );
 
   const activePhase = useMemo(
@@ -314,8 +404,8 @@ export function App() {
         isCurrentTarget={d.day === telemetry.currentTargetDay}
         isFocused={d.day === focusedDay}
         startDate={startDate}
-        hasNote={Boolean(notes[d.day]?.trim())}
-        isBookmarked={Boolean(bookmarks[d.day])}
+        hasNote={Boolean(scopedNotes[d.day]?.trim())}
+        isBookmarked={Boolean(scopedBookmarks[d.day])}
         onToggleTask={handleToggleTask}
         onToggleAllDayTasks={handleToggleAllDayTasks}
         onFocusDay={handleFocusDay}
@@ -328,8 +418,8 @@ export function App() {
         isCurrentTarget={d.day === telemetry.currentTargetDay}
         isFocused={d.day === focusedDay}
         startDate={startDate}
-        hasNote={Boolean(notes[d.day]?.trim())}
-        isBookmarked={Boolean(bookmarks[d.day])}
+        hasNote={Boolean(scopedNotes[d.day]?.trim())}
+        isBookmarked={Boolean(scopedBookmarks[d.day])}
         onToggleTask={handleToggleTask}
         onToggleAllDayTasks={handleToggleAllDayTasks}
         onFocusDay={handleFocusDay}
@@ -340,6 +430,7 @@ export function App() {
   return (
     <div className="app-shell flex min-h-screen flex-col">
       <TopCommandHeader
+        selectedTrack={selectedTrack}
         selectedPhase={selectedPhase}
         onSelectPhase={setSelectedPhase}
         telemetry={telemetry}
@@ -352,7 +443,15 @@ export function App() {
       />
 
       <main className="mx-auto w-full max-w-[1500px] flex-1 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+        <StudyTrackSwitcher
+          selectedTrack={selectedTrack}
+          onSelectTrack={handleSelectTrack}
+          cglTelemetry={telemetryByTrack.cgl}
+          dataAnalysisTelemetry={telemetryByTrack.dataAnalysis}
+        />
+
         <OverviewHero
+          studyTrack={selectedTrack}
           telemetry={telemetry}
           startDate={startDate}
           onChangeStartDate={setStartDate}
@@ -361,11 +460,12 @@ export function App() {
 
         {showHeatmap && (
           <ConsistencyHeatmap
-            days={days}
+            studyTrack={selectedTrack}
+            days={scopedDays}
             focusedDay={focusedDay}
             currentTargetDay={telemetry.currentTargetDay}
             startDate={startDate}
-            bookmarks={bookmarks}
+            bookmarks={scopedBookmarks}
             onSelectDay={handleJumpToDay}
           />
         )}
@@ -376,7 +476,7 @@ export function App() {
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-blue-600" />
               <h2 className="font-display text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                Mission deck · Day {focusedDayItem.day} of {TOTAL_DAYS}
+                {STUDY_TRACKS[selectedTrack].label} mission deck · Day {focusedDayItem.day} of {TOTAL_DAYS}
               </h2>
             </div>
             <button
@@ -391,10 +491,11 @@ export function App() {
 
           {showDeck && (
             <ActiveDaySpotlight
+              studyTrack={selectedTrack}
               dayItem={focusedDayItem}
               isCurrentTarget={focusedDayItem.day === telemetry.currentTargetDay}
               startDate={startDate}
-              note={notes[focusedDayItem.day] || ''}
+              note={scopedNotes[focusedDayItem.day] || ''}
               isBookmarked={Boolean(bookmarks[focusedDayItem.day])}
               onToggleTask={handleToggleTask}
               onToggleAllDayTasks={handleToggleAllDayTasks}
@@ -415,23 +516,27 @@ export function App() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-display text-sm font-extrabold text-slate-900">
-                    {activePhase.label} · {activePhase.subtitle}
+                    {activePhase.label} · {selectedTrack === 'cgl' ? activePhase.cglSubtitle : activePhase.dataAnalysisSubtitle}
                   </h3>
                   <span className="num rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold text-blue-800">
                     {telemetry.phaseProgress[activePhase.id]?.percent ?? 0}% complete
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-                  <span className="font-bold text-blue-700">Math:</span> {activePhase.mathFocus}
-                  <span className="mx-1.5 text-slate-300">•</span>
-                  <span className="font-bold text-teal-700">GK:</span> {activePhase.gkFocus}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
-                  <span className="font-bold text-indigo-700">English:</span>{' '}
-                  {activePhase.englishFocus}
-                  <span className="mx-1.5 text-slate-300">•</span>
-                  <span className="font-bold text-sky-700">Data Science:</span>{' '}
-                  {activePhase.dsFocus}
+                  {selectedTrack === 'cgl' ? (
+                    <>
+                      <span className="font-bold text-blue-700">Math:</span> {activePhase.mathFocus}
+                      <span className="mx-1.5 text-slate-300">•</span>
+                      <span className="font-bold text-indigo-700">English:</span> {activePhase.englishFocus}
+                      <span className="mx-1.5 text-slate-300">•</span>
+                      <span className="font-bold text-teal-700">GK:</span> {activePhase.gkFocus}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-bold text-sky-700">Data Analysis:</span>{' '}
+                      {activePhase.dsFocus}
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -448,6 +553,7 @@ export function App() {
         )}
 
         <FilterToolbar
+          studyTrack={selectedTrack}
           statusFilter={statusFilter}
           onChangeStatusFilter={setStatusFilter}
           searchQuery={searchQuery}
@@ -498,8 +604,8 @@ export function App() {
               Queue clear — every day in this view is done
             </h3>
             <p className="mt-1 max-w-md text-[11.5px] text-slate-500">
-              All {sunkDays.length} day{sunkDays.length === 1 ? '' : 's'} here are cleared
-              5/5. Your next target is{' '}
+              All {sunkDays.length} day{sunkDays.length === 1 ? '' : 's'} here are cleared for{' '}
+              {STUDY_TRACKS[selectedTrack].label}. Your next target is{' '}
               <strong className="num text-slate-800">Day {telemetry.currentTargetDay}</strong>.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -623,11 +729,11 @@ export function App() {
               <Sigma className="h-3.5 w-3.5" strokeWidth={2.5} />
             </div>
             <span className="text-[11px] font-bold text-slate-700">
-              180-Day Study &amp; Skill Tracker
+              180-Day CGL &amp; Data Analysis Tracker
             </span>
             <span className="hidden text-slate-300 sm:inline">|</span>
             <span className="num hidden text-[10.5px] font-semibold text-slate-500 sm:inline">
-              900 tasks · 990 hours · 5.5h/day
+              CGL: 630h · Data Analysis: 360h · 180 days each
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -649,7 +755,7 @@ export function App() {
         isOpen={isCurriculumOpen}
         onClose={() => setIsCurriculumOpen(false)}
         days={days}
-        onJumpToDay={handleJumpToDay}
+        onJumpToTrackDay={handleJumpToTrackDay}
       />
 
       <BackupModal
@@ -666,7 +772,7 @@ export function App() {
         isOpen={isResetOpen}
         onClose={() => setIsResetOpen(false)}
         onConfirmReset={handleReset}
-        completedTasksCount={telemetry.completedTasks}
+        completedTasksCount={overallTelemetry.completedTasks}
       />
     </div>
   );

@@ -7,10 +7,11 @@ import {
   RotateCcw,
   Sigma,
 } from 'lucide-react';
-import { PHASE_BLOCKS } from '../data/trackerGenerator';
+import { PHASE_BLOCKS, STUDY_TRACKS, StudyTrack } from '../data/trackerGenerator';
 import { TelemetryStats } from '../utils/storage';
 
 interface TopCommandHeaderProps {
+  selectedTrack: StudyTrack;
   selectedPhase: number | 'all';
   onSelectPhase: (phase: number | 'all') => void;
   telemetry: TelemetryStats;
@@ -23,6 +24,7 @@ interface TopCommandHeaderProps {
 }
 
 export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
+  selectedTrack,
   selectedPhase,
   onSelectPhase,
   telemetry,
@@ -47,15 +49,17 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
             </div>
             <div className="min-w-0">
               <h1 className="font-display text-[17px] font-extrabold leading-tight text-slate-900 sm:text-xl">
-                180-Day Study &amp; Skill Tracker
+                180-Day CGL &amp; Data Analysis Tracker
               </h1>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-slate-500">
                 <span className="hidden sm:inline">
-                  Math · English · GK · Data Science
+                  {selectedTrack === 'cgl'
+                    ? 'CGL · Math · English · General Awareness'
+                    : 'Data Analysis · Python · SQL · Portfolio'}
                 </span>
                 <span className="hidden sm:inline text-slate-300">|</span>
                 <span className="num font-semibold text-slate-600">
-                  5.5h/day · 990h
+                  {STUDY_TRACKS[selectedTrack].dailyHours}h/day · 180-day plan
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/80 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse-soft" />
@@ -70,7 +74,7 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
               type="button"
               onClick={() => onJumpToDay(telemetry.currentTargetDay)}
               className="grad-brand num inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold text-white shadow-md shadow-blue-600/20 transition hover:brightness-110 active:scale-[0.98] cursor-pointer"
-              title="Jump to the next incomplete day"
+              title={`Jump to the next incomplete ${STUDY_TRACKS[selectedTrack].label} day`}
             >
               <CalendarCheck className="h-3.5 w-3.5" />
               Target Day {String(telemetry.currentTargetDay).padStart(3, '0')}
@@ -160,7 +164,7 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
                 key={phase.id}
                 type="button"
                 onClick={() => onSelectPhase(phase.id)}
-                title={`${phase.code} — ${phase.subtitle} · ${stat.percent}% complete`}
+                title={`${phase.code} — ${selectedTrack === 'cgl' ? phase.cglSubtitle : phase.dataAnalysisSubtitle} · ${stat.percent}% complete`}
                 className={`group flex shrink-0 flex-col gap-1.5 rounded-xl border px-3 py-1.5 text-left transition cursor-pointer ${
                   isSelected
                     ? 'border-blue-500 bg-blue-50/80 shadow-md shadow-blue-600/10'
@@ -202,7 +206,7 @@ export const TopCommandHeader: React.FC<TopCommandHeaderProps> = ({
                 </div>
 
                 <div className="hidden max-w-[190px] truncate text-[10px] font-medium text-slate-500 sm:block">
-                  {phase.subtitle}
+                    {selectedTrack === 'cgl' ? phase.cglSubtitle : phase.dataAnalysisSubtitle}
                 </div>
 
                 <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200/80">

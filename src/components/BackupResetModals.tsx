@@ -49,7 +49,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
       })
     );
     return {
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       startDate,
       completedMap,
@@ -154,7 +154,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
               1 · Export
             </h3>
             <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-              Save every tick, daily log and flagged day into a single portable file.
+              Save both study tracks, their separate daily logs, and flagged days into one portable file.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button

@@ -5,8 +5,6 @@ import {
   PHASE_BLOCKS,
   SubjectKey,
   SUBJECT_ORDER,
-  TOTAL_HOURS,
-  TOTAL_TASKS,
 } from '../data/trackerGenerator';
 
 /**
@@ -179,6 +177,8 @@ export const computeTelemetry = (days: DayTrackerItem[]): TelemetryStats => {
   let daysInProgress = 0;
   let daysUntouched = 0;
   let loggedHours = 0;
+  let totalPossibleHours = 0;
+  const totalTasks = days.reduce((sum, dayItem) => sum + dayItem.tasks.length, 0);
 
   const subjectStats = {} as Record<SubjectKey, SubjectStat>;
   SUBJECT_ORDER.forEach((key) => {
@@ -212,6 +212,7 @@ export const computeTelemetry = (days: DayTrackerItem[]): TelemetryStats => {
       const meta = parseTaskMeta(task);
       const s = subjectStats[meta.subjectKey];
       s.total += meta.durationHours;
+      totalPossibleHours += meta.durationHours;
       s.totalCount += 1;
       if (phaseProgress[phaseId]) phaseProgress[phaseId].totalTasks += 1;
 
@@ -273,21 +274,22 @@ export const computeTelemetry = (days: DayTrackerItem[]): TelemetryStats => {
     }
   });
 
-  const remainingTasks = Math.max(0, TOTAL_TASKS - completedTasks);
-  const remainingHours = Math.max(0, TOTAL_HOURS - loggedHours);
-  const overallPercent = TOTAL_TASKS > 0
-    ? Number(((completedTasks / TOTAL_TASKS) * 100).toFixed(1))
+  const remainingTasks = Math.max(0, totalTasks - completedTasks);
+  const remainingHours = Math.max(0, totalPossibleHours - loggedHours);
+  const overallPercent = totalTasks > 0
+    ? Number(((completedTasks / totalTasks) * 100).toFixed(1))
     : 0;
+  const tasksPerDay = days[0]?.tasks.length ?? 1;
 
   return {
-    totalTasks: TOTAL_TASKS,
+    totalTasks,
     completedTasks,
     remainingTasks,
     overallPercent,
     daysCompleted,
     daysInProgress,
     daysUntouched,
-    totalPossibleHours: TOTAL_HOURS,
+    totalPossibleHours,
     loggedHours,
     remainingHours,
     subjectStats,
@@ -295,14 +297,19 @@ export const computeTelemetry = (days: DayTrackerItem[]): TelemetryStats => {
     currentTargetDay,
     activeStreak,
     bestStreak,
-    etaDateLabel: getEtaDateLabel(remainingTasks, currentTargetDay),
+    etaDateLabel: getEtaDateLabel(remainingTasks, currentTargetDay, tasksPerDay, days.length),
     projectedFinishLabel: '',
   };
 };
 
-/** Rough finish projection: remaining tasks ÷ 5 tasks per day. */
-const getEtaDateLabel = (remainingTasks: number, currentDay: number): string => {
-  const daysLeft = Math.ceil(remainingTasks / 5);
+/** Rough finish projection based on the active study track's daily task count. */
+const getEtaDateLabel = (
+  remainingTasks: number,
+  currentDay: number,
+  tasksPerDay: number,
+  totalDays: number
+): string => {
+  const daysLeft = Math.ceil(remainingTasks / Math.max(tasksPerDay, 1));
   const target = new Date();
   target.setDate(target.getDate() + daysLeft);
   const label = target.toLocaleDateString('en-US', {
@@ -310,7 +317,7 @@ const getEtaDateLabel = (remainingTasks: number, currentDay: number): string => 
     day: 'numeric',
     year: 'numeric',
   });
-  return `${label} (Day ${currentDay + daysLeft > 180 ? 180 : currentDay + daysLeft}/180)`;
+  return `${label} (Day ${Math.min(totalDays, currentDay + daysLeft)}/${totalDays})`;
 };
 
 /** Calendar label for a given tracker day, based on the chosen start date. */

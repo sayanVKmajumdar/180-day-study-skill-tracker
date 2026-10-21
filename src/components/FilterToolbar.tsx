@@ -1,4 +1,5 @@
 import React from 'react';
+import { StudyTrack } from '../data/trackerGenerator';
 import {
   ArrowDownUp,
   Bookmark,
@@ -26,6 +27,7 @@ export type StatusFilter =
 export type ViewMode = 'grid' | 'list';
 
 interface FilterToolbarProps {
+  studyTrack: StudyTrack;
   statusFilter: StatusFilter;
   onChangeStatusFilter: (f: StatusFilter) => void;
   searchQuery: string;
@@ -42,6 +44,7 @@ interface FilterToolbarProps {
 }
 
 export const FilterToolbar: React.FC<FilterToolbarProps> = ({
+  studyTrack,
   statusFilter,
   onChangeStatusFilter,
   searchQuery,
@@ -67,7 +70,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     { id: 'in-progress', label: 'In progress', icon: <Clock3 className="h-3 w-3 text-blue-500" /> },
     {
       id: 'completed',
-      label: 'Cleared 5/5',
+      label: 'Completed days',
       icon: <CheckCircle2 className="h-3 w-3 text-emerald-500" />,
     },
     {
@@ -87,12 +90,15 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
       badge: notesCount,
     },
   ];
+  const visibleFilters = filters.filter(
+    (filter) => studyTrack === 'cgl' || filter.id !== 'rapid-rev'
+  );
 
   return (
     <div className="surface flex flex-col gap-3 p-3.5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
-          {filters.map((f) => {
+          {visibleFilters.map((f) => {
             const active = statusFilter === f.id;
             return (
               <button
@@ -124,7 +130,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => onChangeSearchQuery(e.target.value)}
-              placeholder="Search day, topic, note… (RSI, Polity, SQL)"
+              placeholder="Search day, topic, note… (SQL, Polity, Python)"
               className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-2 pl-8 pr-7 text-[11.5px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none"
             />
             {searchQuery && (

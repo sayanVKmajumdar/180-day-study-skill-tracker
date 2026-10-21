@@ -1,13 +1,17 @@
 import React from 'react';
 import {
   DayTrackerItem,
+  DS_ROADMAP,
   getGkSubjectForDay,
   GK_SEQUENCE,
   PHASE_BLOCKS,
+  STUDY_TRACKS,
+  StudyTrack,
 } from '../data/trackerGenerator';
 import { getProjectedDateLabel } from '../utils/storage';
 
 interface ConsistencyHeatmapProps {
+  studyTrack: StudyTrack;
   days: DayTrackerItem[];
   focusedDay: number;
   currentTargetDay: number;
@@ -25,9 +29,10 @@ const LEVEL_STYLES = [
   'bg-emerald-500 border-emerald-600 text-white',
 ];
 
-const LEVEL_LABELS = ['0/5', '1/5', '2/5', '3/5', '4/5', '5/5'];
+const LEVEL_LABELS = ['0%', '20%', '40%', '60%', '80%', '100%'];
 
 export const ConsistencyHeatmap: React.FC<ConsistencyHeatmapProps> = ({
+  studyTrack,
   days,
   focusedDay,
   currentTargetDay,
@@ -46,10 +51,10 @@ export const ConsistencyHeatmap: React.FC<ConsistencyHeatmapProps> = ({
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
           <h2 className="font-display text-sm font-extrabold text-slate-900">
-            180-Day Consistency Matrix
+            180-Day Consistency Matrix · {STUDY_TRACKS[studyTrack].label}
           </h2>
           <p className="mt-0.5 text-[11px] font-medium text-slate-500">
-            Six 30-day phases · click any cell to open that day in the mission deck
+            Six 30-day phases · each cell shows completion within this study track
           </p>
         </div>
 
@@ -60,7 +65,7 @@ export const ConsistencyHeatmap: React.FC<ConsistencyHeatmapProps> = ({
               <span
                 key={i}
                 className={`h-4 w-4 rounded border ${cls}`}
-                title={`${LEVEL_LABELS[i]} tasks completed`}
+                title={`${LEVEL_LABELS[i]} of this track's daily tasks completed`}
               />
             ))}
           </div>
@@ -68,19 +73,31 @@ export const ConsistencyHeatmap: React.FC<ConsistencyHeatmapProps> = ({
         </div>
       </div>
 
-      {/* Phase / GK legend rail */}
+      {/* Study module legend rail */}
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
-        {GK_SEQUENCE.map((g) => (
-          <div
-            key={g.subject}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1"
-            title={`${g.subject} — ${g.status}`}
-          >
-            <span className="h-2 w-2 rounded-full bg-teal-500" />
-            <span className="text-[10px] font-bold text-slate-700">{g.subject}</span>
-            <span className="num text-[9.5px] font-semibold text-slate-400">{g.range}</span>
-          </div>
-        ))}
+        {studyTrack === 'cgl'
+          ? GK_SEQUENCE.map((g) => (
+              <div
+                key={g.subject}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1"
+                title={`${g.subject} — ${g.status}`}
+              >
+                <span className="h-2 w-2 rounded-full bg-teal-500" />
+                <span className="text-[10px] font-bold text-slate-700">{g.subject}</span>
+                <span className="num text-[9.5px] font-semibold text-slate-400">{g.range}</span>
+              </div>
+            ))
+          : DS_ROADMAP.map((module) => (
+              <div
+                key={module.skill}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50/70 px-2.5 py-1"
+                title={`${module.skill} — ${module.detail}`}
+              >
+                <span className="h-2 w-2 rounded-full bg-sky-500" />
+                <span className="text-[10px] font-bold text-slate-700">{module.skill}</span>
+                <span className="num text-[9.5px] font-semibold text-slate-400">{module.range}</span>
+              </div>
+            ))}
       </div>
 
       <div className="mt-4 space-y-2.5 overflow-x-auto pb-1">
@@ -109,6 +126,7 @@ export const ConsistencyHeatmap: React.FC<ConsistencyHeatmapProps> = ({
               >
                 {phaseDays.map((d) => {
                   const doneCount = d.tasks.filter((t) => t.completed).length;
+                  const level = Math.round((doneCount / Math.max(d.tasks.length, 1)) * 5);
                   const isFocused = d.day === focusedDay;
                   const isTarget = d.day === currentTargetDay;
                   const flagged = Boolean(bookmarks[d.day]);
@@ -119,11 +137,9 @@ export const ConsistencyHeatmap: React.FC<ConsistencyHeatmapProps> = ({
                       key={d.day}
                       type="button"
                       onClick={() => onSelectDay(d.day)}
-                      title={`Day ${d.day}${dateStr ? ` · ${dateStr}` : ''} · GK: ${getGkSubjectForDay(
-                        d.day
-                      )} · ${doneCount}/5 tasks`}
+                      title={`Day ${d.day}${dateStr ? ` · ${dateStr}` : ''}${studyTrack === 'cgl' ? ` · GK: ${getGkSubjectForDay(d.day)}` : ''} · ${doneCount}/${d.tasks.length} ${STUDY_TRACKS[studyTrack].label} tasks`}
                       className={`num relative flex h-[22px] w-full items-center justify-center rounded border text-[8.5px] font-extrabold transition hover:scale-110 hover:z-20 cursor-pointer ${
-                        LEVEL_STYLES[doneCount]
+                        LEVEL_STYLES[level]
                       } ${
                         isFocused
                           ? 'ring-2 ring-slate-900 ring-offset-1 z-10'

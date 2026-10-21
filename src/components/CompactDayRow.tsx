@@ -44,7 +44,11 @@ export const CompactDayRow: React.FC<CompactDayRowProps> = React.memo(
     const completedCount = dayItem.tasks.filter((t) => t.completed).length;
     const isAllDone = completedCount === dayItem.tasks.length;
     const dateLabel = getProjectedDateLabel(dayItem.day, startDate);
-    const gkSubject = getGkSubjectForDay(dayItem.day);
+    const hasGkFocus = dayItem.tasks.some((task) => {
+      const { subjectKey } = parseTaskMeta(task);
+      return subjectKey === 'gkNew' || subjectKey === 'gkRev';
+    });
+    const gkSubject = hasGkFocus ? getGkSubjectForDay(dayItem.day) : null;
 
     return (
       <div
@@ -73,9 +77,11 @@ export const CompactDayRow: React.FC<CompactDayRowProps> = React.memo(
               {dateLabel && (
                 <div className="num text-[10px] font-bold text-slate-500">{dateLabel}</div>
               )}
-              <div className="truncate text-[9px] font-semibold text-slate-400">
-                {gkSubject}
-              </div>
+              {gkSubject && (
+                <div className="truncate text-[9px] font-semibold text-slate-400">
+                  GK: {gkSubject}
+                </div>
+              )}
             </div>
           </div>
 
@@ -89,12 +95,12 @@ export const CompactDayRow: React.FC<CompactDayRowProps> = React.memo(
             }`}
           >
             <CheckCheck className="h-3 w-3" />
-            {completedCount}/5
+            {completedCount}/{dayItem.tasks.length}
           </button>
         </div>
 
         {/* Task pills */}
-        <div className="grid flex-1 grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-5">
+        <div className={`grid flex-1 grid-cols-1 gap-1.5 ${dayItem.tasks.length === 1 ? 'sm:grid-cols-1 xl:grid-cols-1' : 'sm:grid-cols-2 xl:grid-cols-4'}`}>
           {dayItem.tasks.map((task) => {
             const meta = parseTaskMeta(task);
             const style = SUBJECT_STYLES[meta.subjectKey];
@@ -183,7 +189,7 @@ export const CompactDayRow: React.FC<CompactDayRowProps> = React.memo(
             }`}
           >
             <CheckCheck className="h-3 w-3" />
-            {completedCount}/5
+            {completedCount}/{dayItem.tasks.length}
           </button>
         </div>
       </div>

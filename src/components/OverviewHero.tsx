@@ -8,17 +8,16 @@ import {
   Zap,
 } from 'lucide-react';
 import {
-  HOURS_PER_DAY,
   PHASE_BLOCKS,
-  SUBJECT_ORDER,
+  STUDY_TRACKS,
   SUBJECT_STYLES,
   TOTAL_DAYS,
-  TOTAL_HOURS,
-  TOTAL_TASKS,
+  StudyTrack,
 } from '../data/trackerGenerator';
 import { TelemetryStats } from '../utils/storage';
 
 interface OverviewHeroProps {
+  studyTrack: StudyTrack;
   telemetry: TelemetryStats;
   startDate: string;
   onChangeStartDate: (value: string) => void;
@@ -29,15 +28,20 @@ const RING_RADIUS = 58;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export const OverviewHero: React.FC<OverviewHeroProps> = ({
+  studyTrack,
   telemetry,
   startDate,
   onChangeStartDate,
   onJumpToTarget,
 }) => {
   const ringOffset = RING_CIRCUMFERENCE * (1 - telemetry.overallPercent / 100);
+  const trackConfig = STUDY_TRACKS[studyTrack];
+  const subjectKeys = trackConfig.subjectKeys;
   const activePhase =
     PHASE_BLOCKS.find((p) => p.id === Math.ceil(telemetry.currentTargetDay / 30)) ??
     PHASE_BLOCKS[0];
+  const activePhaseSubtitle =
+    studyTrack === 'cgl' ? activePhase.cglSubtitle : activePhase.dataAnalysisSubtitle;
 
   const tiles = [
     {
@@ -52,7 +56,7 @@ export const OverviewHero: React.FC<OverviewHeroProps> = ({
       icon: <Clock4 className="h-4 w-4" />,
       label: 'Hours Logged',
       value: telemetry.loggedHours.toFixed(1),
-      sub: `of ${TOTAL_HOURS}h total`,
+      sub: `of ${telemetry.totalPossibleHours}h total`,
       accent: 'text-sky-600 bg-sky-50 border-sky-100',
       extra: `${telemetry.remainingHours.toFixed(1)}h remaining`,
     },
@@ -62,7 +66,7 @@ export const OverviewHero: React.FC<OverviewHeroProps> = ({
       value: `${telemetry.activeStreak}d`,
       sub: `best ${telemetry.bestStreak}d`,
       accent: 'text-amber-600 bg-amber-50 border-amber-100',
-      extra: `${HOURS_PER_DAY}h committed / day`,
+      extra: `${trackConfig.dailyHours}h committed / day`,
     },
     {
       icon: <TrendingUp className="h-4 w-4" />,
@@ -91,12 +95,14 @@ export const OverviewHero: React.FC<OverviewHeroProps> = ({
                 {activePhase.code}
               </span>
               <h2 className="font-display text-base font-extrabold text-white sm:text-lg">
-                {activePhase.subtitle}
+                {activePhaseSubtitle}
               </h2>
             </div>
             <p className="mt-1 text-[11px] font-medium text-blue-50/90 sm:text-xs">
-              {activePhase.label} · Math 1h · English 1h · GK New 1h · GK Rev 30m ·
-              Data Science 2h
+              {trackConfig.label} · {activePhase.label} · {trackConfig.dailyHours}h/day
+              {studyTrack === 'cgl'
+                ? ' · Math · English · General Awareness · Revision'
+                : ' · Python · SQL · EDA · Visualization · Portfolio'}
             </p>
           </div>
 
@@ -179,13 +185,13 @@ export const OverviewHero: React.FC<OverviewHeroProps> = ({
               <span className="font-bold text-slate-900">
                 {telemetry.completedTasks}
               </span>{' '}
-              / {TOTAL_TASKS} tasks logged
+              / {telemetry.totalTasks} tasks logged
             </p>
             <p className="num mt-0.5 text-xs text-slate-500">
               <span className="font-bold text-slate-900">
                 {telemetry.loggedHours.toFixed(0)}h
               </span>{' '}
-              / {TOTAL_HOURS}h studied
+              / {telemetry.totalPossibleHours}h studied
             </p>
             <div className="mt-3 flex items-center gap-1.5">
               {PHASE_BLOCKS.map((p) => {
@@ -256,16 +262,20 @@ export const OverviewHero: React.FC<OverviewHeroProps> = ({
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                Subject Load &amp; Coverage
+                {studyTrack === 'cgl' ? 'CGL Subject Progress' : 'Data Analysis Skill Progress'}
               </h3>
               <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500">
                 <Zap className="h-3 w-3 text-amber-500" />
-                <span>⚡Rev = already-read topic, compressed to rapid revision</span>
+                <span>
+                  {studyTrack === 'cgl'
+                    ? '⚡Rev = previously covered topic, compressed to rapid revision'
+                    : 'Complete each daily skill block to advance your analytics track'}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-              {SUBJECT_ORDER.map((key) => {
+            <div className={`grid grid-cols-1 gap-2.5 ${subjectKeys.length === 1 ? 'sm:grid-cols-1 xl:grid-cols-1' : 'sm:grid-cols-2 xl:grid-cols-4'}`}>
+              {subjectKeys.map((key) => {
                 const style = SUBJECT_STYLES[key];
                 const stat = telemetry.subjectStats[key];
                 return (

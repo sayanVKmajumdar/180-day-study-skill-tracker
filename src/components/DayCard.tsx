@@ -46,7 +46,11 @@ export const DayCard: React.FC<DayCardProps> = React.memo(
     const isInProgress = completedCount > 0 && !isAllDone;
     const dateLabel = getProjectedDateLabel(dayItem.day, startDate);
     const weekday = getProjectedWeekday(dayItem.day, startDate);
-    const gkSubject = getGkSubjectForDay(dayItem.day);
+    const hasGkFocus = dayItem.tasks.some((task) => {
+      const { subjectKey } = parseTaskMeta(task);
+      return subjectKey === 'gkNew' || subjectKey === 'gkRev';
+    });
+    const gkSubject = hasGkFocus ? getGkSubjectForDay(dayItem.day) : null;
 
     const headerTone = isAllDone
       ? 'bg-emerald-50/70 border-emerald-100'
@@ -69,7 +73,7 @@ export const DayCard: React.FC<DayCardProps> = React.memo(
             : ''
         }`}
       >
-        {/* 5-segment subject strip */}
+        {/* One progress segment per task in this study track */}
         <div className="flex gap-[3px] bg-slate-100 p-[3px]">
           {dayItem.tasks.map((t) => {
             const meta = parseTaskMeta(t);
@@ -104,9 +108,11 @@ export const DayCard: React.FC<DayCardProps> = React.memo(
                   {weekday}, {dateLabel}
                 </div>
               )}
-              <div className="truncate text-[10px] font-semibold text-slate-400">
-                GK: {gkSubject}
-              </div>
+              {gkSubject && (
+                <div className="truncate text-[10px] font-semibold text-slate-400">
+                  GK: {gkSubject}
+                </div>
+              )}
             </div>
           </div>
 
@@ -160,10 +166,10 @@ export const DayCard: React.FC<DayCardProps> = React.memo(
                   ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
               }`}
-              title={isAllDone ? 'Uncheck all' : 'Mark all 5 complete'}
+              title={isAllDone ? 'Uncheck all' : `Mark all ${dayItem.tasks.length} tasks complete`}
             >
               <CheckCheck className="h-3 w-3" />
-              {completedCount}/5
+              {completedCount}/{dayItem.tasks.length}
             </button>
           </div>
         </div>
