@@ -8,7 +8,6 @@ import {
   FilterX,
   PartyPopper,
   Sigma,
-  Target,
 } from 'lucide-react';
 import {
   generate180DaysTracker,
@@ -442,7 +441,7 @@ export function App() {
         onOpenResetConfirm={() => setIsResetOpen(true)}
       />
 
-      <main className="mx-auto w-full max-w-[1500px] flex-1 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
         <StudyTrackSwitcher
           selectedTrack={selectedTrack}
           onSelectTrack={handleSelectTrack}
@@ -472,17 +471,17 @@ export function App() {
 
         {/* Mission deck */}
         <section className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-600" />
-              <h2 className="font-display text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-                {STUDY_TRACKS[selectedTrack].label} mission deck · Day {focusedDayItem.day} of {TOTAL_DAYS}
+          <div className="mission-section-heading">
+            <div className="mission-heading-copy">
+              <p className="section-kicker">In focus / daily session</p>
+              <h2 className="mission-section-title">
+                {STUDY_TRACKS[selectedTrack].label} · Day {focusedDayItem.day} of {TOTAL_DAYS}
               </h2>
             </div>
             <button
               type="button"
               onClick={() => setShowDeck((s) => !s)}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-500 transition hover:bg-white hover:text-slate-900 cursor-pointer"
+              className="mission-collapse-btn"
             >
               {showDeck ? 'Minimise' : 'Expand'}
               {showDeck ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -722,7 +721,7 @@ export function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200/80 bg-white/70 backdrop-blur-sm">
+      <footer className="app-footer">
         <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-2.5 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <div className="grad-brand flex h-7 w-7 items-center justify-center rounded-lg text-white">

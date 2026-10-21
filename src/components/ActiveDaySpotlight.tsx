@@ -146,13 +146,7 @@ export const ActiveDaySpotlight: React.FC<ActiveDaySpotlightProps> = ({
       }`}
     >
       {/* Header band */}
-      <div
-        className={`relative px-5 py-4 sm:px-6 ${
-          allCompleted
-            ? 'bg-emerald-700'
-            : 'bg-slate-900'
-        }`}
-      >
+      <div className="mission-header relative px-5 py-4 sm:px-6">
         <div className="pointer-events-none absolute inset-0 shimmer opacity-25" />
         <div className="relative flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
